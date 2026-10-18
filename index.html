@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tortas Leoo">
+<meta name="theme-color" content="#B5231A">
+<title>Tortas Ahogadas Leoo</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<style>
+  :root {
+    --salsa: #B5231A;
+    --salsa-oscura: #7F1610;
+    --salsa-clara: #F9DDD8;
+    --birote: #E0A84B;
+    --birote-claro: #F6D9A0;
+    --crema: #FFF5E6;
+    --tarjeta: #FFFBF4;
+    --cafe: #3B2314;
+    --cafe-claro: #6B4A35;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--crema);
+    color: var(--cafe);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 16px;
+  }
+  button { font: inherit; cursor: pointer; border: none; }
+  input { font: inherit; }
+
+  /* ---------- Encabezado rojo con escurrido ---------- */
+  header {
+    background: var(--salsa);
+    color: #fff;
+    padding: calc(14px + env(safe-area-inset-top)) 20px 4px;
+    position: sticky; top: 0; z-index: 5;
+  }
+  header h1 { margin: 0; font-size: 28px; font-weight: 900; letter-spacing: -0.5px; }
+  header p { margin: 2px 0 0; color: var(--birote-claro); font-size: 14px; }
+  .fila-header { display: flex; align-items: center; gap: 8px; }
+  .fila-header .grow { flex: 1; min-width: 0; }
+  .btn-header {
+    background: transparent; color: var(--birote-claro);
+    padding: 8px 10px; border-radius: 10px; font-weight: 600;
+  }
+  .btn-header:active { background: rgba(255,255,255,.12); }
+  .escurrido { display: block; position: absolute; left: 0; bottom: -21px; width: 100%; height: 22px; }
+
+  main { padding: 32px 16px 120px; max-width: 640px; margin: 0 auto; }
+
+  /* ---------- Campos ---------- */
+  .campo {
+    width: 100%; padding: 14px 16px; margin-bottom: 10px;
+    background: var(--tarjeta); color: var(--cafe);
+    border: 1.5px solid var(--birote); border-radius: 16px; outline: none;
+  }
+  .campo:focus { border-color: var(--salsa); }
+  .campo::placeholder { color: var(--cafe-claro); }
+
+  /* ---------- Tarjetas de órdenes ---------- */
+  .orden {
+    display: flex; overflow: hidden; margin-bottom: 12px;
+    background: var(--tarjeta); border: 1.5px solid var(--birote); border-radius: 18px;
+  }
+  .orden .franja { width: 8px; background: var(--salsa); flex-shrink: 0; }
+  .orden .cuerpo { flex: 1; padding: 14px; min-width: 0; }
+  .orden .arriba { display: flex; justify-content: space-between; gap: 8px; }
+  .orden .cliente { font-weight: 900; font-size: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .orden .total { font-weight: 900; font-size: 20px; color: var(--salsa); }
+  .orden .fecha { font-size: 12px; color: var(--cafe-claro); }
+  .orden .resumen { font-size: 14px; margin-top: 4px; }
+  .orden .acciones { display: flex; justify-content: flex-end; gap: 6px; margin-top: 8px; }
+
+  .btn { padding: 10px 18px; border-radius: 22px; font-weight: 700; }
+  .btn-rojo { background: var(--salsa); color: #fff; }
+  .btn-rojo:active { background: var(--salsa-oscura); }
+  .btn-texto { background: transparent; color: var(--cafe-claro); }
+  .btn-dorado { background: var(--birote); color: var(--cafe); }
+
+  .vacio { text-align: center; color: var(--cafe-claro); margin-top: 48px; line-height: 1.5; }
+
+  .fab {
+    position: fixed; right: 20px; bottom: calc(20px + env(safe-area-inset-bottom));
+    background: var(--birote); color: var(--cafe);
+    font-weight: 900; padding: 16px 22px; border-radius: 18px;
+    box-shadow: 0 6px 16px rgba(59,35,20,.25); z-index: 6;
+  }
+  .fab:active { transform: scale(.97); }
+
+  /* ---------- Menú de productos ---------- */
+  .categoria { color: var(--salsa); font-weight: 900; font-size: 20px; margin: 18px 0 8px; }
+  .producto {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--tarjeta); border: 1px solid var(--birote-claro); border-radius: 16px;
+    padding: 8px 10px 8px 14px; margin-bottom: 8px;
+  }
+  .producto .info { flex: 1; min-width: 0; }
+  .producto .nombre { font-weight: 700; }
+  .producto .precio { color: var(--salsa); font-weight: 700; font-size: 14px; }
+  .circulo {
+    width: 44px; height: 44px; border-radius: 50%;
+    font-size: 22px; font-weight: 700; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .menos { background: transparent; color: var(--salsa); border: 1.5px solid var(--salsa); }
+  .menos:disabled { opacity: .35; }
+  .mas { background: var(--salsa); color: #fff; }
+  .cantidad { width: 36px; text-align: center; font-weight: 900; font-size: 18px; }
+
+  /* ---------- Barra inferior café ---------- */
+  .barra {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 6;
+    background: var(--cafe);
+    padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+  }
+  .barra .total-grande { color: var(--birote); font-weight: 900; font-size: 26px; max-width: 640px; margin: 0 auto; }
+  .barra .botones { display: flex; gap: 12px; margin: 10px auto 0; max-width: 640px; }
+  .barra .botones button { flex: 1; padding: 14px; border-radius: 22px; font-weight: 800; }
+  .btn-contorno { background: transparent; color: var(--birote-claro); border: 1.5px solid var(--birote-claro) !important; }
+
+  /* ---------- Avisos ---------- */
+  .toast {
+    position: fixed; left: 50%; bottom: calc(150px + env(safe-area-inset-bottom));
+    transform: translateX(-50%); background: var(--cafe); color: #fff;
+    padding: 12px 18px; border-radius: 14px; font-size: 15px; z-index: 20;
+    opacity: 0; transition: opacity .2s; pointer-events: none; max-width: 90%; text-align: center;
+  }
+  .toast.visible { opacity: 1; }
+  .aviso {
+    background: var(--salsa-clara); color: var(--salsa-oscura);
+    border-radius: 14px; padding: 12px 14px; margin-bottom: 12px; font-size: 14px; line-height: 1.4;
+  }
+
+  /* ---------- Hoja de respaldo ---------- */
+  .fondo-hoja { position: fixed; inset: 0; background: rgba(59,35,20,.45); z-index: 30; display: none; }
+  .fondo-hoja.visible { display: block; }
+  .hoja {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    background: var(--crema); border-radius: 22px 22px 0 0;
+    padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
+    max-width: 640px; margin: 0 auto;
+  }
+  .hoja h2 { margin: 0 0 6px; color: var(--salsa); font-weight: 900; }
+  .hoja p { margin: 0 0 14px; color: var(--cafe-claro); font-size: 14px; line-height: 1.4; }
+  .hoja button { width: 100%; margin-bottom: 10px; padding: 14px; }
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+<div class="toast" id="toast"></div>
+
+<div class="fondo-hoja" id="fondoHoja">
+  <div class="hoja">
+    <h2>Respaldo</h2>
+    <p>Guarda una copia de todas las órdenes en un archivo, por si se borran los datos del navegador.</p>
+    <button class="btn btn-rojo" id="btnExportar">Descargar respaldo</button>
+    <button class="btn btn-dorado" id="btnImportar">Restaurar desde archivo</button>
+    <button class="btn btn-texto" id="btnCerrarHoja">Cerrar</button>
+    <input type="file" id="archivo" accept=".json,application/json" hidden>
+  </div>
+</div>
+
+<script>
+// ================== MENÚ (cambia aquí precios y nombre) ==================
+const NEGOCIO = "Tortas Ahogadas Leoo";
+const TELEFONO_NEGOCIO = "3337805578";
+const PRECIO_REFRESCO = 25; // OJO: no me diste este precio, cámbialo
+
+const CATEGORIAS = ["Tortas", "Tacos dorados", "Bebidas"];
+const PRODUCTOS = [
+  { id: "torta_carnitas", nombre: "Torta de carnitas",     precio: 60, cat: "Tortas" },
+  { id: "torta_buche",    nombre: "Torta de buche",        precio: 60, cat: "Tortas" },
+  { id: "torta_lengua",   nombre: "Torta de lengua",       precio: 60, cat: "Tortas" },
+  { id: "torta_surtida",  nombre: "Torta surtida",         precio: 60, cat: "Tortas" },
+  { id: "taco_papa",      nombre: "Taco dorado de papa",   precio: 10, cat: "Tacos dorados" },
+  { id: "taco_frijol",    nombre: "Taco dorado de frijol", precio: 10, cat: "Tacos dorados" },
+  { id: "agua_litro",     nombre: "Agua (1 L)",            precio: 30, cat: "Bebidas" },
+  { id: "agua_chica",     nombre: "Agua chica",            precio: 20, cat: "Bebidas" },
+  { id: "refresco",       nombre: "Refresco",              precio: PRECIO_REFRESCO, cat: "Bebidas" }
+];
+
+// ================== GUARDADO (localStorage) ==================
+const CLAVE = "ordenes_tortas";
+
+// Revisa si el navegador deja guardar (en algunos modos no deja)
+const puedeGuardar = (() => {
+  try {
+    localStorage.setItem("__prueba", "1");
+    localStorage.removeItem("__prueba");
+    return true;
+  } catch (e) { return false; }
+})();
+
+let memoria = []; // por si no se puede guardar, al menos funciona mientras esté abierta
+
+function obtenerOrdenes() {
+  if (!puedeGuardar) return memoria;
+  try { return JSON.parse(localStorage.getItem(CLAVE)) || []; }
+  catch (e) { return []; }
+}
+
+function escribirOrdenes(lista) {
+  memoria = lista;
+  if (!puedeGuardar) return;
+  try { localStorage.setItem(CLAVE, JSON.stringify(lista)); }
+  catch (e) { toast("No se pudo guardar"); }
+}
+
+function guardarOrden(orden) {
+  escribirOrdenes(obtenerOrdenes().filter(o => o.id !== orden.id).concat(orden));
+}
+
+function eliminarOrden(id) {
+  escribirOrdenes(obtenerOrdenes().filter(o => o.id !== id));
+}
+
+// ================== UTILIDADES ==================
+const total = o => o.lineas.reduce((s, l) => s + l.precio * l.cantidad, 0);
+
+function fechaTexto(ms) {
+  const d = new Date(ms), p = n => String(n).padStart(2, "0");
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+// Evita que un nombre con < o > rompa la página
+function esc(t) {
+  return String(t).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("visible");
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => t.classList.remove("visible"), 2200);
+}
+
+const ESCURRIDO = `<svg class="escurrido" viewBox="0 0 360 24" preserveAspectRatio="none" aria-hidden="true">
+  <path fill="#B5231A" d="M0,0 L360,0 L360,6 C350,6 349,17 341,17 C333,17 333,6 323,6 L292,6 C283,6 284,23 273,23 C262,23 263,6 254,6 L212,6 C204,6 204,13 197,13 C190,13 190,6 182,6 L142,6 C132,6 133,20 122,20 C111,20 112,6 102,6 L72,6 C64,6 64,15 57,15 C50,15 50,6 42,6 L22,6 C16,6 16,11 11,11 C6,11 6,6 0,6 Z"/>
+</svg>`;
+
+// ================== RECIBO Y WHATSAPP ==================
+function recibo(o) {
+  let r = `*${NEGOCIO}*\nRecibo de pedido\nCliente: ${o.cliente}\nFecha: ${fechaTexto(o.fecha)}\n--------------------\n`;
+  o.lineas.forEach(l => { r += `${l.cantidad} x ${l.nombre}  $${l.precio * l.cantidad}\n`; });
+  r += `--------------------\n*TOTAL: $${total(o)}*\n¡Gracias por tu compra!\nPedidos al: ${TELEFONO_NEGOCIO}`;
+  return r;
+}
+
+function enviarWhatsApp(o) {
+  const digitos = (o.telefono || "").replace(/\D/g, "");
+  const texto = encodeURIComponent(recibo(o));
+  let url;
+  if (digitos.length >= 10) {
+    const numero = digitos.length === 10 ? "52" + digitos : digitos; // 52 = México
+    url = `https://wa.me/${numero}?text=${texto}`;
+  } else {
+    url = `https://wa.me/?text=${texto}`; // WhatsApp te deja escoger el contacto
+  }
+  window.location.href = url;
+}
+
+// ================== PANTALLA 1: LISTA ==================
+let busqueda = "";
+
+function pantallaLista() {
+  const ordenes = obtenerOrdenes().sort((a, b) => b.fecha - a.fecha);
+  const filtradas = ordenes.filter(o => o.cliente.toLowerCase().includes(busqueda.trim().toLowerCase()));
+
+  document.getElementById("app").innerHTML = `
+    <header>
+      <div class="fila-header">
+        <div class="grow">
+          <h1>${esc(NEGOCIO)}</h1>
+          <p>Pedidos al: <a href="tel:${TELEFONO_NEGOCIO}" style="color:inherit">${TELEFONO_NEGOCIO}</a></p>
+        </div>
+        <button class="btn-header" id="btnRespaldo">Respaldo</button>
+      </div>
+      ${ESCURRIDO}
+    </header>
+    <main>
+      ${puedeGuardar ? "" : `<div class="aviso"><b>Ojo:</b> aquí el navegador no deja guardar. Las órdenes se borran al cerrar la página.</div>`}
+      <input class="campo" id="buscar" placeholder="Buscar por nombre" value="${esc(busqueda)}" autocomplete="off">
+      <div id="lista">
+        ${filtradas.length === 0
+          ? `<div class="vacio">Todavía no hay órdenes.<br>¡A ahogar tortas!</div>`
+          : filtradas.map(o => `
+            <div class="orden" data-abrir="${o.id}">
+              <div class="franja"></div>
+              <div class="cuerpo">
+                <div class="arriba">
+                  <div class="cliente">${esc(o.cliente)}</div>
+                  <div class="total">$${total(o)}</div>
+                </div>
+                <div class="fecha">${fechaTexto(o.fecha)}</div>
+                <div class="resumen">${esc(o.lineas.map(l => `${l.cantidad} ${l.nombre}`).join(", "))}</div>
+                <div class="acciones">
+                  <button class="btn btn-texto" data-borrar="${o.id}">Eliminar</button>
+                  <button class="btn btn-rojo" data-wa="${o.id}">WhatsApp</button>
+                </div>
+              </div>
+            </div>`).join("")}
+      </div>
+    </main>
+    <button class="fab" id="btnNueva">+ Nueva orden</button>
+  `;
+
+  const buscar = document.getElementById("buscar");
+  buscar.addEventListener("input", () => {
+    busqueda = buscar.value;
+    pantallaLista();
+    const b = document.getElementById("buscar");
+    b.focus();
+    b.setSelectionRange(b.value.length, b.value.length);
+  });
+
+  document.getElementById("btnNueva").onclick = () => pantallaOrden(null);
+  document.getElementById("btnRespaldo").onclick = abrirHoja;
+
+  document.getElementById("lista").onclick = e => {
+    const borrar = e.target.closest("[data-borrar]");
+    const wa = e.target.closest("[data-wa]");
+    const abrir = e.target.closest("[data-abrir]");
+    const buscarId = id => obtenerOrdenes().find(o => o.id === Number(id));
+
+    if (borrar) {
+      const o = buscarId(borrar.dataset.borrar);
+      if (o && confirm(`¿Borrar la orden de ${o.cliente}?`)) {
+        eliminarOrden(o.id);
+        pantallaLista();
+      }
+    } else if (wa) {
+      enviarWhatsApp(buscarId(wa.dataset.wa));
+    } else if (abrir) {
+      pantallaOrden(buscarId(abrir.dataset.abrir));
+    }
+  };
+}
+
+// ================== PANTALLA 2: CREAR / EDITAR ORDEN ==================
+function pantallaOrden(inicial) {
+  const cant = {}; // productoId -> cantidad
+  if (inicial) inicial.lineas.forEach(l => { cant[l.productoId] = l.cantidad; });
+
+  document.getElementById("app").innerHTML = `
+    <header>
+      <div class="fila-header">
+        <button class="btn-header" id="btnAtras">‹ Atrás</button>
+        <h1 style="font-size:22px">${inicial ? "Editar orden" : "Nueva orden"}</h1>
+      </div>
+      ${ESCURRIDO}
+    </header>
+    <main style="padding-bottom:170px">
+      <input class="campo" id="cliente" placeholder="Nombre del cliente" autocapitalize="words" autocomplete="off" value="${esc(inicial ? inicial.cliente : "")}">
+      <input class="campo" id="telefono" placeholder="WhatsApp (opcional, 10 dígitos)" type="tel" inputmode="tel" value="${esc(inicial ? inicial.telefono : "")}">
+      ${CATEGORIAS.map(cat => `
+        <div class="categoria">${cat}</div>
+        ${PRODUCTOS.filter(p => p.cat === cat).map(p => `
+          <div class="producto">
+            <div class="info">
+              <div class="nombre">${p.nombre}</div>
+              <div class="precio">$${p.precio}</div>
+            </div>
+            <button class="circulo menos" data-menos="${p.id}">−</button>
+            <div class="cantidad" id="c_${p.id}">0</div>
+            <button class="circulo mas" data-mas="${p.id}">+</button>
+          </div>`).join("")}
+      `).join("")}
+    </main>
+    <div class="barra">
+      <div class="total-grande" id="total">Total: $0</div>
+      <div class="botones">
+        <button class="btn-contorno" id="btnGuardar">Guardar</button>
+        <button class="btn-rojo" id="btnEnviar">Guardar y enviar</button>
+      </div>
+    </div>
+  `;
+
+  function refrescar() {
+    let t = 0;
+    PRODUCTOS.forEach(p => {
+      const c = cant[p.id] || 0;
+      t += c * p.precio;
+      document.getElementById("c_" + p.id).textContent = c;
+      document.querySelector(`[data-menos="${p.id}"]`).disabled = c === 0;
+    });
+    document.getElementById("total").textContent = `Total: $${t}`;
+  }
+
+  document.querySelector("main").onclick = e => {
+    const mas = e.target.closest("[data-mas]");
+    const menos = e.target.closest("[data-menos]");
+    if (mas) cant[mas.dataset.mas] = (cant[mas.dataset.mas] || 0) + 1;
+    if (menos && cant[menos.dataset.menos] > 0) cant[menos.dataset.menos]--;
+    if (mas || menos) refrescar();
+  };
+
+  function construirOrden() {
+    const cliente = document.getElementById("cliente").value.trim();
+    if (!cliente) { toast("Pon el nombre del cliente"); return null; }
+    const lineas = PRODUCTOS
+      .filter(p => (cant[p.id] || 0) > 0)
+      .map(p => ({ productoId: p.id, nombre: p.nombre, precio: p.precio, cantidad: cant[p.id] }));
+    if (lineas.length === 0) { toast("La orden está vacía"); return null; }
+    return {
+      id: inicial ? inicial.id : Date.now(),
+      cliente,
+      telefono: document.getElementById("telefono").value.trim(),
+      lineas,
+      fecha: inicial ? inicial.fecha : Date.now()
+    };
+  }
+
+  document.getElementById("btnAtras").onclick = pantallaLista;
+  document.getElementById("btnGuardar").onclick = () => {
+    const o = construirOrden();
+    if (o) { guardarOrden(o); pantallaLista(); toast("Orden guardada"); }
+  };
+  document.getElementById("btnEnviar").onclick = () => {
+    const o = construirOrden();
+    if (o) { guardarOrden(o); pantallaLista(); enviarWhatsApp(o); }
+  };
+
+  refrescar();
+  window.scrollTo(0, 0);
+}
+
+// ================== RESPALDO ==================
+const fondoHoja = document.getElementById("fondoHoja");
+function abrirHoja() { fondoHoja.classList.add("visible"); }
+function cerrarHoja() { fondoHoja.classList.remove("visible"); }
+
+document.getElementById("btnCerrarHoja").onclick = cerrarHoja;
+fondoHoja.onclick = e => { if (e.target === fondoHoja) cerrarHoja(); };
+
+document.getElementById("btnExportar").onclick = () => {
+  const blob = new Blob([JSON.stringify(obtenerOrdenes(), null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  const hoy = new Date().toISOString().slice(0, 10);
+  a.download = `respaldo-tortas-${hoy}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+
+const inputArchivo = document.getElementById("archivo");
+document.getElementById("btnImportar").onclick = () => inputArchivo.click();
+inputArchivo.onchange = async () => {
+  const f = inputArchivo.files[0];
+  if (!f) return;
+  try {
+    const datos = JSON.parse(await f.text());
+    if (!Array.isArray(datos)) throw new Error();
+    // Junta lo del respaldo con lo que ya hay (sin duplicar por id)
+    const actuales = obtenerOrdenes();
+    const ids = new Set(actuales.map(o => o.id));
+    escribirOrdenes(actuales.concat(datos.filter(o => o && o.id && !ids.has(o.id))));
+    cerrarHoja();
+    pantallaLista();
+    toast("Respaldo restaurado");
+  } catch (e) {
+    toast("Ese archivo no es un respaldo válido");
+  }
+  inputArchivo.value = "";
+};
+
+pantallaLista();
+
+// Registra el service worker (solo funciona en https, como GitHub Pages)
+if ("serviceWorker" in navigator && location.protocol === "https:") {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+</script>
+</body>
+</html>
