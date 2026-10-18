@@ -1,6 +1,6 @@
 // Service worker: guarda la app en el celular para que abra sin internet.
 // Si cambias algo, sube el número de versión para forzar la actualización.
-const VERSION = "tortas-leoo-v2";
+const VERSION = "tortas-leoo-v5";
 const ARCHIVOS = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e => {
