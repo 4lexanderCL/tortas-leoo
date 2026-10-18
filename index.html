@@ -119,6 +119,13 @@
   .mas { background: var(--salsa); color: #fff; }
   .cantidad { width: 36px; text-align: center; font-weight: 900; font-size: 18px; }
 
+  .otro-form { display: flex; gap: 8px; align-items: stretch; margin-top: 4px; }
+  .otro-form .campo { margin: 0; min-width: 0; }
+  .otro-form .nom { flex: 2; }
+  .otro-form .pre { flex: 1; }
+  .otro-form button { padding: 0 16px; border-radius: 16px; font-weight: 800; }
+  .extra-nota { font-size: 13px; color: var(--cafe-claro); margin: 0 0 8px; }
+
   /* ---------- Barra inferior café ---------- */
   .barra {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 6;
@@ -188,7 +195,8 @@ const PRODUCTOS = [
   { id: "mini_torta",     nombre: "Mini torta",            precio: 35, cat: "Tortas" },
   { id: "taco_papa",      nombre: "Taco dorado de papa",   precio: 10, cat: "Tacos dorados" },
   { id: "taco_frijol",    nombre: "Taco dorado de frijol", precio: 10, cat: "Tacos dorados" },
-  { id: "taco_carne",     nombre: "Taco dorado con carne", precio: 25, cat: "Tacos dorados" },
+  { id: "taco_papa_carne",   nombre: "Taco de papa con carne",   precio: 25, cat: "Tacos dorados" },
+  { id: "taco_frijol_carne", nombre: "Taco de frijol con carne", precio: 25, cat: "Tacos dorados" },
   { id: "agua_litro",     nombre: "Agua (1 L)",            precio: 30, cat: "Bebidas" },
   { id: "agua_chica",     nombre: "Agua chica",            precio: 20, cat: "Bebidas" },
   { id: "refresco",       nombre: "Refresco",              precio: PRECIO_REFRESCO, cat: "Bebidas" }
@@ -377,8 +385,13 @@ function pantallaLista() {
 
 // ================== PANTALLA 2: CREAR / EDITAR ORDEN ==================
 function pantallaOrden(inicial) {
-  const cant = {}; // productoId -> cantidad
-  if (inicial) inicial.lineas.forEach(l => { cant[l.productoId] = l.cantidad; });
+  const cant = {}; // productoId -> cantidad (productos del menú)
+  const extras = []; // productos de "Otros": { id, nombre, precio, cantidad }
+  const esDelMenu = id => PRODUCTOS.some(p => p.id === id);
+  if (inicial) inicial.lineas.forEach(l => {
+    if (esDelMenu(l.productoId)) cant[l.productoId] = l.cantidad;
+    else extras.push({ id: l.productoId, nombre: l.nombre, precio: l.precio, cantidad: l.cantidad });
+  });
 
   document.getElementById("app").innerHTML = `
     <header>
@@ -404,6 +417,14 @@ function pantallaOrden(inicial) {
             <button class="circulo mas" data-mas="${p.id}">+</button>
           </div>`).join("")}
       `).join("")}
+      <div class="categoria">Otros</div>
+      <p class="extra-nota">Para algo que no está en el menú. Pon nombre y precio y dale Agregar.</p>
+      <div id="listaExtras"></div>
+      <div class="otro-form">
+        <input class="campo nom" id="otroNombre" placeholder="Nombre" autocomplete="off" autocapitalize="sentences">
+        <input class="campo pre" id="otroPrecio" placeholder="$ Precio" type="number" inputmode="decimal" min="0" step="any">
+        <button class="btn-dorado" id="btnAgregarOtro">Agregar</button>
+      </div>
     </main>
     <div class="barra">
       <div class="total-grande" id="total">Total: $0</div>
@@ -414,8 +435,21 @@ function pantallaOrden(inicial) {
     </div>
   `;
 
+  function pintarExtras() {
+    document.getElementById("listaExtras").innerHTML = extras.map(x => `
+      <div class="producto">
+        <div class="info">
+          <div class="nombre">${esc(x.nombre)}</div>
+          <div class="precio">$${x.precio}</div>
+        </div>
+        <button class="circulo menos" data-xmenos="${x.id}" aria-label="Quitar uno">−</button>
+        <div class="cantidad">${x.cantidad}</div>
+        <button class="circulo mas" data-xmas="${x.id}" aria-label="Agregar uno">+</button>
+      </div>`).join("");
+  }
+
   function refrescar() {
-    let t = 0;
+    let t = extras.reduce((s, x) => s + x.precio * x.cantidad, 0);
     PRODUCTOS.forEach(p => {
       const c = cant[p.id] || 0;
       t += c * p.precio;
@@ -431,6 +465,31 @@ function pantallaOrden(inicial) {
     if (mas) cant[mas.dataset.mas] = (cant[mas.dataset.mas] || 0) + 1;
     if (menos && cant[menos.dataset.menos] > 0) cant[menos.dataset.menos]--;
     if (mas || menos) refrescar();
+
+    const xmas = e.target.closest("[data-xmas]");
+    const xmenos = e.target.closest("[data-xmenos]");
+    if (xmas || xmenos) {
+      const id = (xmas || xmenos).dataset[xmas ? "xmas" : "xmenos"];
+      const x = extras.find(x => x.id === id);
+      if (xmas) x.cantidad++;
+      else if (--x.cantidad <= 0) extras.splice(extras.indexOf(x), 1); // en 0 se quita
+      pintarExtras();
+      refrescar();
+    }
+  };
+
+  document.getElementById("btnAgregarOtro").onclick = () => {
+    const nom = document.getElementById("otroNombre");
+    const pre = document.getElementById("otroPrecio");
+    const nombre = nom.value.trim();
+    const precio = Math.round(Number(pre.value) * 100) / 100;
+    if (!nombre) { toast("Ponle nombre"); nom.focus(); return; }
+    if (!pre.value || !(precio > 0)) { toast("Pon un precio válido"); pre.focus(); return; }
+    extras.push({ id: "otro_" + Date.now(), nombre, precio, cantidad: 1 });
+    nom.value = ""; pre.value = "";
+    nom.blur(); pre.blur();
+    pintarExtras();
+    refrescar();
   };
 
   function construirOrden() {
@@ -438,7 +497,8 @@ function pantallaOrden(inicial) {
     if (!cliente) { toast("Pon el nombre del cliente"); return null; }
     const lineas = PRODUCTOS
       .filter(p => (cant[p.id] || 0) > 0)
-      .map(p => ({ productoId: p.id, nombre: p.nombre, precio: p.precio, cantidad: cant[p.id] }));
+      .map(p => ({ productoId: p.id, nombre: p.nombre, precio: p.precio, cantidad: cant[p.id] }))
+      .concat(extras.map(x => ({ productoId: x.id, nombre: x.nombre, precio: x.precio, cantidad: x.cantidad })));
     if (lineas.length === 0) { toast("La orden está vacía"); return null; }
     return {
       id: inicial ? inicial.id : Date.now(),
@@ -460,6 +520,7 @@ function pantallaOrden(inicial) {
     if (o) { guardarOrden(o); pantallaLista(); enviarWhatsApp(o); }
   };
 
+  pintarExtras();
   refrescar();
   window.scrollTo(0, 0);
 }
