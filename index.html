@@ -72,6 +72,11 @@
   .orden .franja { width: 8px; background: var(--salsa); flex-shrink: 0; }
   .orden .cuerpo { flex: 1; padding: 14px; min-width: 0; }
   .orden .arriba { display: flex; justify-content: space-between; gap: 8px; }
+  .orden .numero {
+    display: inline-block; background: var(--salsa); color: #fff;
+    font-size: 14px; font-weight: 900; padding: 2px 9px; border-radius: 10px;
+    margin-right: 8px; vertical-align: 2px;
+  }
   .orden .cliente { font-weight: 900; font-size: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .orden .total { font-weight: 900; font-size: 20px; color: var(--salsa); }
   .orden .fecha { font-size: 12px; color: var(--cafe-claro); }
@@ -214,7 +219,29 @@ function escribirOrdenes(lista) {
   catch (e) { toast("No se pudo guardar"); }
 }
 
+// ---- Número de orden (1, 2, 3...) ----
+const CLAVE_CONTADOR = "contador_tortas";
+
+// Le pone número a las órdenes viejas que no tenían (en orden de fecha)
+function numerarViejas() {
+  const lista = obtenerOrdenes();
+  if (lista.every(o => o.numero)) return;
+  let n = Math.max(0, ...lista.map(o => o.numero || 0));
+  lista.slice().sort((a, b) => a.fecha - b.fecha).forEach(o => { if (!o.numero) o.numero = ++n; });
+  escribirOrdenes(lista);
+}
+
+// Siguiente número. Usa un contador guardado para no repetir números aunque borres órdenes.
+function siguienteNumero() {
+  let guardado = 0;
+  try { guardado = Number(localStorage.getItem(CLAVE_CONTADOR)) || 0; } catch (e) {}
+  const mayor = Math.max(0, ...obtenerOrdenes().map(o => o.numero || 0));
+  return Math.max(guardado, mayor) + 1;
+}
+
 function guardarOrden(orden) {
+  if (!orden.numero) orden.numero = siguienteNumero();
+  try { localStorage.setItem(CLAVE_CONTADOR, String(orden.numero)); } catch (e) {}
   escribirOrdenes(obtenerOrdenes().filter(o => o.id !== orden.id).concat(orden));
 }
 
@@ -249,7 +276,7 @@ const ESCURRIDO = `<svg class="escurrido" viewBox="0 0 360 24" preserveAspectRat
 
 // ================== RECIBO Y WHATSAPP ==================
 function recibo(o) {
-  let r = `*${NEGOCIO}*\nRecibo de pedido\nCliente: ${o.cliente}\nFecha: ${fechaTexto(o.fecha)}\n--------------------\n`;
+  let r = `*${NEGOCIO}*\nOrden #${o.numero}\nCliente: ${o.cliente}\nFecha: ${fechaTexto(o.fecha)}\n--------------------\n`;
   o.lineas.forEach(l => { r += `${l.cantidad} x ${l.nombre}  $${l.precio * l.cantidad}\n`; });
   r += `--------------------\n*TOTAL: $${total(o)}*\n¡Gracias por tu compra!\nPedidos al: ${TELEFONO_NEGOCIO}`;
   return r;
@@ -273,7 +300,8 @@ let busqueda = "";
 
 function pantallaLista() {
   const ordenes = obtenerOrdenes().sort((a, b) => b.fecha - a.fecha);
-  const filtradas = ordenes.filter(o => o.cliente.toLowerCase().includes(busqueda.trim().toLowerCase()));
+  const q = busqueda.trim().toLowerCase().replace(/^#/, "");
+  const filtradas = ordenes.filter(o => o.cliente.toLowerCase().includes(q) || String(o.numero) === q);
 
   document.getElementById("app").innerHTML = `
     <header>
@@ -288,7 +316,7 @@ function pantallaLista() {
     </header>
     <main>
       ${puedeGuardar ? "" : `<div class="aviso"><b>Ojo:</b> aquí el navegador no deja guardar. Las órdenes se borran al cerrar la página.</div>`}
-      <input class="campo" id="buscar" placeholder="Buscar por nombre" value="${esc(busqueda)}" autocomplete="off">
+      <input class="campo" id="buscar" placeholder="Buscar por nombre o número" value="${esc(busqueda)}" autocomplete="off">
       <div id="lista">
         ${filtradas.length === 0
           ? `<div class="vacio">Todavía no hay órdenes.<br>¡A ahogar tortas!</div>`
@@ -297,7 +325,7 @@ function pantallaLista() {
               <div class="franja"></div>
               <div class="cuerpo">
                 <div class="arriba">
-                  <div class="cliente">${esc(o.cliente)}</div>
+                  <div class="cliente"><span class="numero">#${o.numero}</span>${esc(o.cliente)}</div>
                   <div class="total">$${total(o)}</div>
                 </div>
                 <div class="fecha">${fechaTexto(o.fecha)}</div>
@@ -354,7 +382,7 @@ function pantallaOrden(inicial) {
     <header>
       <div class="fila-header">
         <button class="btn-header" id="btnAtras">‹ Atrás</button>
-        <h1 style="font-size:22px">${inicial ? "Editar orden" : "Nueva orden"}</h1>
+        <h1 style="font-size:22px">${inicial ? `Editar orden #${inicial.numero}` : "Nueva orden"}</h1>
       </div>
       ${ESCURRIDO}
     </header>
@@ -412,6 +440,7 @@ function pantallaOrden(inicial) {
     if (lineas.length === 0) { toast("La orden está vacía"); return null; }
     return {
       id: inicial ? inicial.id : Date.now(),
+      numero: inicial ? inicial.numero : undefined,
       cliente,
       telefono: document.getElementById("telefono").value.trim(),
       lineas,
@@ -465,6 +494,7 @@ inputArchivo.onchange = async () => {
     const actuales = obtenerOrdenes();
     const ids = new Set(actuales.map(o => o.id));
     escribirOrdenes(actuales.concat(datos.filter(o => o && o.id && !ids.has(o.id))));
+    numerarViejas();
     cerrarHoja();
     pantallaLista();
     toast("Respaldo restaurado");
@@ -474,6 +504,7 @@ inputArchivo.onchange = async () => {
   inputArchivo.value = "";
 };
 
+numerarViejas();
 pantallaLista();
 
 // Registra el service worker (solo funciona en https, como GitHub Pages)
