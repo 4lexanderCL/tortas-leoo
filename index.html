@@ -122,9 +122,54 @@
   .otro-form { display: flex; gap: 8px; align-items: stretch; margin-top: 4px; }
   .otro-form .campo { margin: 0; min-width: 0; }
   .otro-form .nom { flex: 2; }
-  .otro-form .pre { flex: 1; }
+  .otro-form .pre { flex: 0 0 96px; }
   .otro-form button { padding: 0 16px; border-radius: 16px; font-weight: 800; }
   .extra-nota { font-size: 13px; color: var(--cafe-claro); margin: 0 0 8px; }
+
+  /* ---------- Separador por día ---------- */
+  .dia {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    margin: 18px 0 10px; padding-bottom: 6px; border-bottom: 2px dashed var(--birote);
+  }
+  .dia:first-child { margin-top: 4px; }
+  .dia .nombre-dia { font-weight: 900; font-size: 18px; color: var(--cafe); }
+  .dia .resumen-dia { font-size: 13px; color: var(--cafe-claro); }
+  .btn-corte {
+    background: var(--cafe); color: var(--birote); font-weight: 800;
+    padding: 8px 14px; border-radius: 14px; white-space: nowrap;
+  }
+
+  /* ---------- Pantalla de corte ---------- */
+  .aviso-auto {
+    background: var(--birote-claro); color: var(--cafe); border-radius: 14px;
+    padding: 12px 14px; margin-bottom: 14px; font-size: 14px; line-height: 1.4;
+  }
+  .fecha-corte { text-align: center; color: var(--cafe-claro); margin-bottom: 12px; }
+  .nav-dias { display: flex; justify-content: space-between; margin-bottom: 12px; }
+  .nav-dias button { background: transparent; color: var(--salsa); font-weight: 800; padding: 6px 4px; }
+  .nav-dias button:disabled { opacity: .3; }
+  .total-dia {
+    background: var(--salsa); color: #fff; border-radius: 20px;
+    padding: 18px; text-align: center; margin-bottom: 12px;
+  }
+  .total-dia .etq { color: var(--birote-claro); font-size: 14px; font-weight: 700; }
+  .total-dia .cifra { font-size: 40px; font-weight: 900; letter-spacing: -1px; }
+  .cifras { display: flex; gap: 10px; margin-bottom: 18px; }
+  .cifras > div {
+    flex: 1; background: var(--tarjeta); border: 1.5px solid var(--birote);
+    border-radius: 16px; padding: 12px; text-align: center;
+  }
+  .cifras .num { font-size: 22px; font-weight: 900; color: var(--salsa); }
+  .cifras .etq { font-size: 12px; color: var(--cafe-claro); }
+  .tabla {
+    background: var(--tarjeta); border: 1.5px solid var(--birote-claro);
+    border-radius: 16px; padding: 4px 14px; margin-bottom: 8px;
+  }
+  .tabla .renglon { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--birote-claro); }
+  .tabla .renglon:last-child { border-bottom: none; }
+  .tabla .cant { font-weight: 900; color: var(--salsa); min-width: 30px; }
+  .tabla .desc { flex: 1; min-width: 0; }
+  .tabla .monto { font-weight: 800; }
 
   /* ---------- Barra inferior café ---------- */
   .barra {
@@ -306,6 +351,25 @@ function enviarWhatsApp(o) {
 }
 
 // ================== PANTALLA 1: LISTA ==================
+function tarjetaOrden(o) {
+  return `
+    <div class="orden" data-abrir="${o.id}">
+      <div class="franja"></div>
+      <div class="cuerpo">
+        <div class="arriba">
+          <div class="cliente"><span class="numero">#${o.numero}</span>${esc(o.cliente)}</div>
+          <div class="total">$${total(o)}</div>
+        </div>
+        <div class="fecha">${fechaTexto(o.fecha)}</div>
+        <div class="resumen">${esc(o.lineas.map(l => `${l.cantidad} ${l.nombre}`).join(", "))}</div>
+        <div class="acciones">
+          <button class="btn btn-texto" data-borrar="${o.id}">Eliminar</button>
+          <button class="btn btn-rojo" data-wa="${o.id}">WhatsApp</button>
+        </div>
+      </div>
+    </div>`;
+}
+
 let busqueda = "";
 
 function pantallaLista() {
@@ -329,23 +393,16 @@ function pantallaLista() {
       <input class="campo" id="buscar" placeholder="Buscar por nombre o número" value="${esc(busqueda)}" autocomplete="off">
       <div id="lista">
         ${filtradas.length === 0
-          ? `<div class="vacio">Todavía no hay órdenes.<br>¡A ahogar tortas!</div>`
-          : filtradas.map(o => `
-            <div class="orden" data-abrir="${o.id}">
-              <div class="franja"></div>
-              <div class="cuerpo">
-                <div class="arriba">
-                  <div class="cliente"><span class="numero">#${o.numero}</span>${esc(o.cliente)}</div>
-                  <div class="total">$${total(o)}</div>
-                </div>
-                <div class="fecha">${fechaTexto(o.fecha)}</div>
-                <div class="resumen">${esc(o.lineas.map(l => `${l.cantidad} ${l.nombre}`).join(", "))}</div>
-                <div class="acciones">
-                  <button class="btn btn-texto" data-borrar="${o.id}">Eliminar</button>
-                  <button class="btn btn-rojo" data-wa="${o.id}">WhatsApp</button>
-                </div>
+          ? `<div class="vacio">${busqueda ? "No hay órdenes con esa búsqueda." : "Todavía no hay órdenes.<br>¡A ahogar tortas!"}</div>`
+          : agruparPorDia(filtradas).map(([dia, lista]) => `
+            <div class="dia">
+              <div>
+                <div class="nombre-dia">${etiquetaDia(dia)}</div>
+                <div class="resumen-dia">${lista.length} ${lista.length === 1 ? "orden" : "órdenes"} · ${dinero(lista.reduce((s, o) => s + total(o), 0))}</div>
               </div>
-            </div>`).join("")}
+              <button class="btn-corte" data-corte="${dia}">Corte</button>
+            </div>
+            ${lista.map(tarjetaOrden).join("")}`).join("")}
       </div>
     </main>
     <button class="fab" id="btnNueva">+ Nueva orden</button>
@@ -364,6 +421,8 @@ function pantallaLista() {
   document.getElementById("btnRespaldo").onclick = abrirHoja;
 
   document.getElementById("lista").onclick = e => {
+    const corte = e.target.closest("[data-corte]");
+    if (corte) { pantallaCorte(corte.dataset.corte); return; }
     const borrar = e.target.closest("[data-borrar]");
     const wa = e.target.closest("[data-wa]");
     const abrir = e.target.closest("[data-abrir]");
@@ -422,7 +481,7 @@ function pantallaOrden(inicial) {
       <div id="listaExtras"></div>
       <div class="otro-form">
         <input class="campo nom" id="otroNombre" placeholder="Nombre" autocomplete="off" autocapitalize="sentences">
-        <input class="campo pre" id="otroPrecio" placeholder="$ Precio" type="number" inputmode="decimal" min="0" step="any">
+        <input class="campo pre" id="otroPrecio" placeholder="Precio" type="number" inputmode="decimal" min="0" step="any">
         <button class="btn-dorado" id="btnAgregarOtro">Agregar</button>
       </div>
     </main>
@@ -525,6 +584,510 @@ function pantallaOrden(inicial) {
   window.scrollTo(0, 0);
 }
 
+// ================== CORTE DEL DÍA ==================
+// "2026-10-18" según la hora del celular
+function claveDia(ms) {
+  const d = new Date(ms), p = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+function fechaDeClave(clave) {
+  const [a, m, d] = clave.split("-").map(Number);
+  return new Date(a, m - 1, d);
+}
+
+function etiquetaDia(clave) {
+  const hoy = claveDia(Date.now());
+  const ayer = claveDia(Date.now() - 86400000);
+  if (clave === hoy) return "Hoy";
+  if (clave === ayer) return "Ayer";
+  return mayus(fechaDeClave(clave).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "short" }));
+}
+
+const mayus = t => t.charAt(0).toUpperCase() + t.slice(1);
+
+function dinero(n) {
+  return "$" + n.toLocaleString("es-MX", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+
+// [[dia, [ordenes...]], ...] del día más reciente al más viejo
+function agruparPorDia(ordenes) {
+  const grupos = {};
+  ordenes.forEach(o => { (grupos[claveDia(o.fecha)] ||= []).push(o); });
+  return Object.keys(grupos).sort().reverse().map(k => [k, grupos[k].sort((a, b) => b.fecha - a.fecha)]);
+}
+
+function calcularCorte(clave) {
+  const ordenes = obtenerOrdenes().filter(o => claveDia(o.fecha) === clave).sort((a, b) => a.fecha - b.fecha);
+  const totalDia = ordenes.reduce((s, o) => s + total(o), 0);
+
+  // Suma por producto (los "otros" con el mismo nombre y precio se juntan)
+  const porProducto = {};
+  ordenes.forEach(o => o.lineas.forEach(l => {
+    const k = l.nombre + "|" + l.precio;
+    porProducto[k] ||= { nombre: l.nombre, cantidad: 0, monto: 0 };
+    porProducto[k].cantidad += l.cantidad;
+    porProducto[k].monto += l.cantidad * l.precio;
+  }));
+  const productos = Object.values(porProducto).sort((a, b) => b.monto - a.monto);
+
+  return {
+    clave, ordenes, totalDia, productos,
+    promedio: ordenes.length ? totalDia / ordenes.length : 0,
+    piezas: productos.reduce((s, p) => s + p.cantidad, 0)
+  };
+}
+
+function textoCorte(c) {
+  const fecha = mayus(fechaDeClave(c.clave).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" }));
+  let r = `*${NEGOCIO}*\n*Corte del día*\n${fecha}\n--------------------\n`;
+  r += `Órdenes: ${c.ordenes.length}\n`;
+  if (c.ordenes.length) r += `De la #${c.ordenes[0].numero} a la #${c.ordenes[c.ordenes.length - 1].numero}\n`;
+  r += `--------------------\n`;
+  c.productos.forEach(p => { r += `${p.cantidad} x ${p.nombre}  ${dinero(p.monto)}\n`; });
+  r += `--------------------\n*TOTAL VENDIDO: ${dinero(c.totalDia)}*\n`;
+  r += `Ticket promedio: ${dinero(Math.round(c.promedio * 100) / 100)}`;
+  return r;
+}
+
+function pantallaCorte(clave, automatico = false) {
+  const c = calcularCorte(clave);
+  const dias = agruparPorDia(obtenerOrdenes()).map(([d]) => d); // más reciente primero
+  const i = dias.indexOf(clave);
+  const anterior = i >= 0 ? dias[i + 1] : undefined;
+  const siguiente = i > 0 ? dias[i - 1] : undefined;
+  const fechaLarga = mayus(fechaDeClave(clave).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" }));
+
+  document.getElementById("app").innerHTML = `
+    <header>
+      <div class="fila-header">
+        <button class="btn-header" id="btnAtras">‹ Atrás</button>
+        <h1 style="font-size:22px">Corte del día</h1>
+      </div>
+      ${ESCURRIDO}
+    </header>
+    <main style="padding-bottom:110px">
+      ${automatico ? `<div class="aviso-auto"><b>Corte automático:</b> así cerró tu último día de ventas.</div>` : ""}
+      <div class="nav-dias">
+        <button id="btnAnterior" ${anterior ? "" : "disabled"}>‹ Día anterior</button>
+        <button id="btnSiguiente" ${siguiente ? "" : "disabled"}>Día siguiente ›</button>
+      </div>
+      <div class="fecha-corte">${etiquetaDia(clave) === "Hoy" || etiquetaDia(clave) === "Ayer" ? etiquetaDia(clave) + " · " + fechaLarga.toLowerCase() : fechaLarga}</div>
+
+      <div class="total-dia">
+        <div class="etq">TOTAL VENDIDO</div>
+        <div class="cifra">${dinero(c.totalDia)}</div>
+      </div>
+      <div class="cifras">
+        <div><div class="num">${c.ordenes.length}</div><div class="etq">órdenes</div></div>
+        <div><div class="num">${c.piezas}</div><div class="etq">productos</div></div>
+        <div><div class="num">${dinero(Math.round(c.promedio))}</div><div class="etq">promedio</div></div>
+      </div>
+
+      <button class="btn btn-dorado" id="btnExcel" style="width:100%;padding:14px;margin-bottom:6px">Descargar Excel (día, semana o mes)</button>
+      ${c.ordenes.length === 0 ? `<div class="vacio">No hubo órdenes este día.</div>` : `
+        <div class="categoria">Lo que se vendió</div>
+        <div class="tabla">
+          ${c.productos.map(p => `
+            <div class="renglon">
+              <div class="cant">${p.cantidad}</div>
+              <div class="desc">${esc(p.nombre)}</div>
+              <div class="monto">${dinero(p.monto)}</div>
+            </div>`).join("")}
+        </div>
+
+        <div class="categoria">Órdenes del día</div>
+        <div class="tabla">
+          ${c.ordenes.map(o => `
+            <div class="renglon">
+              <div class="cant">#${o.numero}</div>
+              <div class="desc">${esc(o.cliente)} <span style="color:var(--cafe-claro);font-size:13px">${fechaTexto(o.fecha).slice(-5)}</span></div>
+              <div class="monto">${dinero(total(o))}</div>
+            </div>`).join("")}
+        </div>`}
+    </main>
+    <div class="barra">
+      <div class="botones" style="margin-top:0">
+        <button class="btn-contorno" id="btnCopiar">Copiar</button>
+        <button class="btn-rojo" id="btnEnviarCorte">Enviar por WhatsApp</button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById("btnAtras").onclick = pantallaLista;
+  document.getElementById("btnExcel").onclick = () => abrirHojaExcel(clave);
+  if (anterior) document.getElementById("btnAnterior").onclick = () => pantallaCorte(anterior);
+  if (siguiente) document.getElementById("btnSiguiente").onclick = () => pantallaCorte(siguiente);
+  document.getElementById("btnEnviarCorte").onclick = () => {
+    window.location.href = `https://wa.me/?text=${encodeURIComponent(textoCorte(c))}`;
+  };
+  document.getElementById("btnCopiar").onclick = async () => {
+    try { await navigator.clipboard.writeText(textoCorte(c).replace(/\*/g, "")); toast("Corte copiado"); }
+    catch (e) { toast("No se pudo copiar"); }
+  };
+  window.scrollTo(0, 0);
+}
+
+// ================== REPORTE EN EXCEL (día / semana / mes) ==================
+// Carga la librería ExcelJS solo cuando se ocupa (está en la misma carpeta, funciona sin internet)
+function cargarExcelJS() {
+  if (window.ExcelJS) return Promise.resolve();
+  if (cargarExcelJS.p) return cargarExcelJS.p;
+  cargarExcelJS.p = new Promise((ok, mal) => {
+    const sc = document.createElement("script");
+    sc.src = "exceljs.min.js";
+    sc.onload = ok;
+    sc.onerror = () => { cargarExcelJS.p = null; mal(new Error("No cargó ExcelJS")); };
+    document.head.appendChild(sc);
+  });
+  return cargarExcelJS.p;
+}
+
+const DIAS_SEMANA = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+
+// Rango de fechas del periodo que contiene "clave" (día "2026-10-17")
+function periodo(tipo, clave) {
+  const d = fechaDeClave(clave);
+  let inicio, fin, titulo, archivo;
+  const fmt = (x, o) => x.toLocaleDateString("es-MX", o);
+  if (tipo === "dia") {
+    inicio = d;
+    fin = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
+    titulo = "Reporte del día · " + mayus(fmt(d, { weekday: "long", day: "numeric", month: "long", year: "numeric" }));
+    archivo = `corte-dia-${clave}.xlsx`;
+  } else if (tipo === "semana") {
+    const dow = (d.getDay() + 6) % 7; // lunes = 0
+    inicio = new Date(d.getFullYear(), d.getMonth(), d.getDate() - dow);
+    fin = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate() + 7);
+    const dom = new Date(fin.getTime() - 86400000);
+    titulo = `Reporte semanal · ${fmt(inicio, { day: "numeric", month: "short" })} al ${fmt(dom, { day: "numeric", month: "short", year: "numeric" })}`;
+    archivo = `corte-semana-${claveDia(inicio.getTime())}.xlsx`;
+  } else {
+    inicio = new Date(d.getFullYear(), d.getMonth(), 1);
+    fin = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+    titulo = "Reporte mensual · " + mayus(fmt(inicio, { month: "long", year: "numeric" }));
+    archivo = `corte-mes-${clave.slice(0, 7)}.xlsx`;
+  }
+  return { tipo, inicio, fin, titulo, archivo };
+}
+
+async function generarExcel(per) {
+  await cargarExcelJS();
+  const ordenes = obtenerOrdenes()
+    .filter(o => o.fecha >= per.inicio.getTime() && o.fecha < per.fin.getTime())
+    .sort((a, b) => a.fecha - b.fecha);
+
+  // ---- Colores de la torta ahogada ----
+  const C = { salsa: "FFB5231A", oscura: "FF7F1610", birote: "FFE0A84B", biroteClaro: "FFF6D9A0",
+              crema: "FFFFF5E6", tarjeta: "FFFFFBF4", cafe: "FF3B2314", blanco: "FFFFFFFF" };
+  const relleno = c => ({ type: "pattern", pattern: "solid", fgColor: { argb: c } });
+  const borde = { style: "thin", color: { argb: C.biroteClaro } };
+  const bordes = { top: borde, left: borde, bottom: borde, right: borde };
+  const DINERO = '"$"#,##0.00';
+  // Número de columna a letra: 1 -> A, 27 -> AA
+  const col = n => { let t = ""; while (n > 0) { const m = (n - 1) % 26; t = String.fromCharCode(65 + m) + t; n = Math.floor((n - 1) / 26); } return t; };
+
+  const wb = new ExcelJS.Workbook();
+  wb.creator = NEGOCIO;
+  wb.created = new Date();
+
+  // Título rojo + subtítulo café en las primeras filas
+  function titulo(ws, ncols, sub) {
+    ws.mergeCells(1, 1, 1, ncols);
+    ws.mergeCells(2, 1, 2, ncols);
+    ws.mergeCells(3, 1, 3, ncols);
+    const t = ws.getCell(1, 1);
+    t.value = NEGOCIO;
+    t.font = { name: "Arial", size: 20, bold: true, color: { argb: C.blanco } };
+    t.fill = relleno(C.salsa);
+    t.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
+    ws.getRow(1).height = 38;
+    const s2 = ws.getCell(2, 1);
+    s2.value = sub;
+    s2.font = { name: "Arial", size: 12, bold: true, color: { argb: C.birote } };
+    s2.fill = relleno(C.cafe);
+    s2.alignment = { vertical: "middle", indent: 1 };
+    ws.getRow(2).height = 24;
+    const s3 = ws.getCell(3, 1);
+    s3.value = `Pedidos al: ${TELEFONO_NEGOCIO}   ·   Generado el ${fechaTexto(Date.now())}`;
+    s3.font = { name: "Arial", size: 9, italic: true, color: { argb: C.cafe } };
+    s3.fill = relleno(C.crema);
+    s3.alignment = { indent: 1 };
+  }
+
+  function encabezado(ws, fila, textos) {
+    const r = ws.getRow(fila);
+    textos.forEach((tx, i) => {
+      const c = r.getCell(i + 1);
+      c.value = tx;
+      c.font = { name: "Arial", bold: true, color: { argb: C.blanco } };
+      c.fill = relleno(C.salsa);
+      c.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+      c.border = bordes;
+    });
+    r.height = 22;
+  }
+
+  function filaDatos(ws, fila, valores, i, formatos = {}) {
+    const r = ws.getRow(fila);
+    valores.forEach((v, j) => {
+      const c = r.getCell(j + 1);
+      c.value = v;
+      c.font = { name: "Arial", color: { argb: C.cafe } };
+      c.fill = relleno(i % 2 ? C.crema : C.tarjeta);
+      c.border = bordes;
+      c.alignment = { vertical: "middle", wrapText: true };
+      if (formatos[j + 1]) c.numFmt = formatos[j + 1];
+    });
+  }
+
+  function filaTotal(ws, fila, valores, formatos = {}) {
+    const r = ws.getRow(fila);
+    valores.forEach((v, j) => {
+      const c = r.getCell(j + 1);
+      c.value = v;
+      c.font = { name: "Arial", bold: true, color: { argb: C.birote } };
+      c.fill = relleno(C.cafe);
+      c.border = bordes;
+      if (formatos[j + 1]) c.numFmt = formatos[j + 1];
+    });
+    r.height = 22;
+  }
+
+  function barra(ws, ref) {
+    ws.addConditionalFormatting({
+      ref,
+      rules: [{ type: "dataBar", minLength: 0, maxLength: 100, gradient: false,
+                cfvo: [{ type: "num", value: 0 }, { type: "max" }], color: { argb: C.birote } }]
+    });
+  }
+
+  // ---- Cálculos ----
+  const totalOrden = o => total(o);
+  const piezasOrden = o => o.lineas.reduce((s, l) => s + l.cantidad, 0);
+  const totalPeriodo = ordenes.reduce((s, o) => s + totalOrden(o), 0);
+  const piezasPeriodo = ordenes.reduce((s, o) => s + piezasOrden(o), 0);
+
+  // Renglones de "ventas por..." (horas si es día, días si es semana/mes)
+  const renglones = [];
+  if (per.tipo === "dia") {
+    const horas = {};
+    ordenes.forEach(o => { (horas[new Date(o.fecha).getHours()] ||= []).push(o); });
+    Object.keys(horas).map(Number).sort((a, b) => a - b).forEach(h => {
+      const l = horas[h], p = n => String(n).padStart(2, "0");
+      renglones.push([`${p(h)}:00 – ${p(h)}:59`, "", l.length, l.reduce((s, o) => s + piezasOrden(o), 0), l.reduce((s, o) => s + totalOrden(o), 0)]);
+    });
+  } else {
+    for (let d = new Date(per.inicio); d < per.fin; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
+      const k = claveDia(d.getTime());
+      const l = ordenes.filter(o => claveDia(o.fecha) === k);
+      renglones.push([DIAS_SEMANA[(d.getDay() + 6) % 7], d.toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" }),
+                      l.length, l.reduce((s, o) => s + piezasOrden(o), 0), l.reduce((s, o) => s + totalOrden(o), 0)]);
+    }
+  }
+  const mejor = renglones.reduce((m, r) => (r[4] > (m ? m[4] : 0) ? r : m), null);
+
+  // Por producto
+  const porProd = {};
+  ordenes.forEach(o => o.lineas.forEach(l => {
+    const k = l.nombre + "|" + l.precio;
+    porProd[k] ||= { nombre: l.nombre, precio: l.precio, cantidad: 0, monto: 0, porDia: {} };
+    porProd[k].cantidad += l.cantidad;
+    porProd[k].monto += l.cantidad * l.precio;
+    const dk = claveDia(o.fecha);
+    porProd[k].porDia[dk] = (porProd[k].porDia[dk] || 0) + l.cantidad;
+  }));
+  const productos = Object.values(porProd).sort((a, b) => b.monto - a.monto);
+
+  // ================= Hoja 1: Resumen =================
+  const ws = wb.addWorksheet("Resumen", { views: [{ showGridLines: false }] });
+  ws.columns = [{ width: 20 }, { width: 16 }, { width: 14 }, { width: 19 }, { width: 22 }];
+  titulo(ws, 5, per.titulo);
+
+  // Tarjetas de cifras (fila 5 etiqueta, fila 6 valor)
+  const etiquetas = ["Total vendido", "Órdenes", "Productos", "Ticket promedio", per.tipo === "dia" ? "Hora pico" : "Mejor día"];
+  const valores = [totalPeriodo, ordenes.length, piezasPeriodo,
+                   ordenes.length ? Math.round(totalPeriodo / ordenes.length * 100) / 100 : 0,
+                   mejor ? (per.tipo === "dia" ? mejor[0] : `${mejor[0]} ${mejor[1].slice(0, 5)}`) : "—"];
+  etiquetas.forEach((e, i) => {
+    const c = ws.getCell(5, i + 1);
+    c.value = e.toUpperCase();
+    c.font = { name: "Arial", size: 9, bold: true, color: { argb: C.cafe } };
+    c.fill = relleno(C.biroteClaro);
+    c.alignment = { horizontal: "center" };
+    c.border = bordes;
+    const v = ws.getCell(6, i + 1);
+    v.value = valores[i];
+    v.font = { name: "Arial", size: i === 0 ? 18 : 14, bold: true, color: { argb: i === 0 ? C.blanco : C.salsa } };
+    v.fill = relleno(i === 0 ? C.salsa : C.tarjeta);
+    v.alignment = { horizontal: "center", vertical: "middle" };
+    v.border = bordes;
+    if (i === 0 || i === 3) v.numFmt = DINERO;
+  });
+  ws.getRow(6).height = 34;
+
+  // Tabla de ventas por día / hora
+  const tituloTabla = ws.getCell(8, 1);
+  tituloTabla.value = per.tipo === "dia" ? "Ventas por hora" : "Ventas por día";
+  tituloTabla.font = { name: "Arial", size: 13, bold: true, color: { argb: C.salsa } };
+  encabezado(ws, 9, per.tipo === "dia" ? ["Hora", "", "Órdenes", "Productos", "Total"] : ["Día", "Fecha", "Órdenes", "Productos", "Total"]);
+  const ini = 10;
+  if (renglones.length === 0) renglones.push(["Sin ventas", "", 0, 0, 0]);
+  renglones.forEach((r, i) => filaDatos(ws, ini + i, r, i, { 5: DINERO }));
+  const fin = ini + renglones.length - 1, ft = fin + 1;
+  filaTotal(ws, ft, ["TOTAL", "",
+    { formula: `SUM(C${ini}:C${fin})`, result: ordenes.length },
+    { formula: `SUM(D${ini}:D${fin})`, result: piezasPeriodo },
+    { formula: `SUM(E${ini}:E${fin})`, result: totalPeriodo }], { 5: DINERO });
+  barra(ws, `E${ini}:E${fin}`);
+  ws.pageSetup = { orientation: "portrait", fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
+
+  // ================= Hoja 2: Productos =================
+  const wp = wb.addWorksheet("Productos", { views: [{ state: "frozen", ySplit: 5, showGridLines: false }] });
+  wp.columns = [{ width: 6 }, { width: 30 }, { width: 12 }, { width: 12 }, { width: 16 }, { width: 14 }];
+  titulo(wp, 6, per.titulo);
+  encabezado(wp, 5, ["#", "Producto", "Precio", "Cantidad", "Total", "% de la venta"]);
+  const pi = 6;
+  const listaProd = productos.length ? productos : [{ nombre: "Sin ventas", precio: 0, cantidad: 0, monto: 0 }];
+  listaProd.forEach((p, i) => {
+    const r = pi + i;
+    filaDatos(wp, r, [i + 1, p.nombre, p.precio, p.cantidad, p.monto,
+      { formula: `IF($E$${pi + listaProd.length}=0,0,E${r}/$E$${pi + listaProd.length})`, result: totalPeriodo ? p.monto / totalPeriodo : 0 }],
+      i, { 3: DINERO, 5: DINERO, 6: "0.0%" });
+    wp.getCell(r, 1).alignment = { horizontal: "center", vertical: "middle" };
+  });
+  const pf = pi + listaProd.length - 1, pt = pf + 1;
+  filaTotal(wp, pt, ["", "TOTAL", "",
+    { formula: `SUM(D${pi}:D${pf})`, result: piezasPeriodo },
+    { formula: `SUM(E${pi}:E${pf})`, result: totalPeriodo },
+    { formula: `SUM(F${pi}:F${pf})`, result: totalPeriodo ? 1 : 0 }], { 5: DINERO, 6: "0.0%" });
+  barra(wp, `E${pi}:E${pf}`);
+
+  // ================= Hoja 3: Producto por día (semana y mes) =================
+  if (per.tipo !== "dia") {
+    const dias = [];
+    for (let d = new Date(per.inicio); d < per.fin; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) dias.push(d);
+    const n = dias.length + 2; // producto + días + total
+    {
+      const wd = wb.addWorksheet("Producto por día", { views: [{ state: "frozen", xSplit: 1, ySplit: 5, showGridLines: false }] });
+      wd.columns = [{ width: 28 }].concat(dias.map(() => ({ width: per.tipo === "semana" ? 11 : 6 }))).concat([{ width: 10 }]);
+      titulo(wd, n, per.titulo + " · cantidades");
+      encabezado(wd, 5, ["Producto"].concat(dias.map(d =>
+        per.tipo === "semana" ? `${DIAS_SEMANA[(d.getDay() + 6) % 7].slice(0, 3)} ${d.getDate()}` : String(d.getDate()))).concat(["Total"]));
+      productos.forEach((p, i) => {
+        const r = 6 + i;
+        const cant = dias.map(d => p.porDia[claveDia(d.getTime())] || null);
+        filaDatos(wd, r, [p.nombre].concat(cant).concat([{ formula: `SUM(B${r}:${col(n - 1)}${r})`, result: p.cantidad }]), i);
+        for (let j = 2; j <= n; j++) wd.getCell(r, j).alignment = { horizontal: "center" };
+        wd.getCell(r, n).font = { name: "Arial", bold: true, color: { argb: C.salsa } };
+      });
+      if (productos.length) {
+        const ultima = 5 + productos.length;
+        filaTotal(wd, ultima + 1, ["TOTAL"].concat(dias.map((d, j) => ({
+          formula: `SUM(${col(j + 2)}6:${col(j + 2)}${ultima})`,
+          result: productos.reduce((s, p) => s + (p.porDia[claveDia(d.getTime())] || 0), 0)
+        }))).concat([{ formula: `SUM(${col(n)}6:${col(n)}${ultima})`, result: piezasPeriodo }]));
+        for (let j = 2; j <= n; j++) wd.getCell(ultima + 1, j).alignment = { horizontal: "center" };
+        // Mapa de calor: más vendido = más dorado
+        wd.addConditionalFormatting({
+          ref: `B6:${col(n - 1)}${ultima}`,
+          rules: [{ type: "colorScale", cfvo: [{ type: "min" }, { type: "max" }],
+                    color: [{ argb: C.tarjeta }, { argb: C.birote }] }]
+        });
+      }
+    }
+  }
+
+  // ================= Hoja 4: Órdenes =================
+  const wo = wb.addWorksheet("Órdenes", { views: [{ state: "frozen", ySplit: 5, showGridLines: false }] });
+  wo.columns = [{ width: 7 }, { width: 12 }, { width: 8 }, { width: 20 }, { width: 14 }, { width: 44 }, { width: 13 }];
+  titulo(wo, 7, per.titulo);
+  encabezado(wo, 5, ["#", "Fecha", "Hora", "Cliente", "Teléfono", "Pedido", "Total"]);
+  ordenes.forEach((o, i) => {
+    const f = fechaTexto(o.fecha);
+    filaDatos(wo, 6 + i, [o.numero, f.slice(0, 10), f.slice(11), o.cliente, o.telefono || "",
+      o.lineas.map(l => `${l.cantidad} x ${l.nombre}`).join(", "), total(o)], i, { 7: DINERO });
+    wo.getCell(6 + i, 1).alignment = { horizontal: "center", vertical: "middle" };
+  });
+  if (ordenes.length) {
+    const of = 5 + ordenes.length;
+    filaTotal(wo, of + 1, ["", "", "", `${ordenes.length} órdenes`, "", "TOTAL",
+      { formula: `SUM(G6:G${of})`, result: totalPeriodo }], { 7: DINERO });
+    wo.autoFilter = { from: "A5", to: `G${of}` };
+  }
+
+  // Que cada hoja quepa a lo ancho al imprimir
+  wb.eachSheet(h => { h.pageSetup = { orientation: h.name === "Resumen" ? "portrait" : "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 } }; });
+
+  const buffer = await wb.xlsx.writeBuffer();
+  return { buffer, ordenes: ordenes.length };
+}
+
+async function descargarExcel(tipo, clave) {
+  const per = periodo(tipo, clave);
+  toast("Generando Excel...");
+  try {
+    const { buffer } = await generarExcel(per);
+    const tipoMime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    const archivo = new File([buffer], per.archivo, { type: tipoMime });
+
+    // En el iPhone abre el menú de compartir (guardar en Archivos, mandar por WhatsApp, etc.)
+    if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
+      try { await navigator.share({ files: [archivo], title: per.titulo }); return; }
+      catch (e) { if (e.name === "AbortError") return; } // si cancelas, no pasa nada
+    }
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(archivo);
+    a.download = per.archivo;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  } catch (e) {
+    toast("No se pudo generar el Excel");
+  }
+}
+
+function abrirHojaExcel(clave) {
+  cargarExcelJS().catch(() => {}); // la va cargando mientras eliges
+  const d = fechaDeClave(clave);
+  const pd = periodo("dia", clave), ps = periodo("semana", clave), pm = periodo("mes", clave);
+  const corto = x => x.toLocaleDateString("es-MX", { day: "numeric", month: "short" });
+  const fondo = document.createElement("div");
+  fondo.className = "fondo-hoja visible";
+  fondo.innerHTML = `
+    <div class="hoja">
+      <h2>Reporte en Excel</h2>
+      <p>¿De qué periodo lo quieres?</p>
+      <button class="btn btn-rojo" data-tipo="dia">Del día · ${corto(d)}</button>
+      <button class="btn btn-rojo" data-tipo="semana">De la semana · ${corto(ps.inicio)} al ${corto(new Date(ps.fin - 86400000))}</button>
+      <button class="btn btn-rojo" data-tipo="mes">Del mes · ${pm.inicio.toLocaleDateString("es-MX", { month: "long" })}</button>
+      <button class="btn btn-texto" data-tipo="">Cancelar</button>
+    </div>`;
+  fondo.onclick = e => {
+    const b = e.target.closest("[data-tipo]");
+    if (e.target !== fondo && !b) return;
+    fondo.remove();
+    if (b && b.dataset.tipo) descargarExcel(b.dataset.tipo, clave);
+  };
+  document.body.appendChild(fondo);
+}
+
+// Al abrir la app en un día nuevo, muestra solo una vez el corte del último día con ventas
+const CLAVE_CORTE_VISTO = "corte_visto";
+function corteAutomatico() {
+  const hoy = claveDia(Date.now());
+  const pasados = agruparPorDia(obtenerOrdenes()).map(([d]) => d).filter(d => d < hoy);
+  if (pasados.length === 0) return false;
+  const ultimo = pasados[0];
+  let visto = "";
+  try { visto = localStorage.getItem(CLAVE_CORTE_VISTO) || ""; } catch (e) {}
+  if (visto >= ultimo) return false;
+  try { localStorage.setItem(CLAVE_CORTE_VISTO, ultimo); } catch (e) {}
+  pantallaCorte(ultimo, true);
+  return true;
+}
+
 // ================== RESPALDO ==================
 const fondoHoja = document.getElementById("fondoHoja");
 function abrirHoja() { fondoHoja.classList.add("visible"); }
@@ -568,7 +1131,7 @@ inputArchivo.onchange = async () => {
 };
 
 numerarViejas();
-pantallaLista();
+if (!corteAutomatico()) pantallaLista();
 
 // Registra el service worker (solo funciona en https, como GitHub Pages)
 if ("serviceWorker" in navigator && location.protocol === "https:") {

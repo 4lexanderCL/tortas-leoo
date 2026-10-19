@@ -1,7 +1,7 @@
 // Service worker: guarda la app en el celular para que abra sin internet.
 // Si cambias algo, sube el número de versión para forzar la actualización.
-const VERSION = "tortas-leoo-v6";
-const ARCHIVOS = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-192.png", "./icon-512.png"];
+const VERSION = "tortas-leoo-v8";
+const ARCHIVOS = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-192.png", "./icon-512.png", "./exceljs.min.js"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(ARCHIVOS)));
